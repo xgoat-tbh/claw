@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #080c14;
+            --card-bg: rgba(15, 23, 42, 0.85);
+            --card-border: rgba(59, 130, 246, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .background-glow {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, rgba(8, 12, 20, 0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px var(--accent-glow);
+            border-radius: 28px;
+            padding: 3rem 2.2rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .icon-box {
+            font-size: 3.2rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            animation: pulse-icon 2.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse-icon {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1.1rem 1.25rem;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+            background: rgba(0, 0, 0, 0.65);
+        }
+
+        input::placeholder {
+            color: rgba(148, 163, 184, 0.6);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1.1rem;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 16px;
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .confirmation-state {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .spinner {
+            width: 26px;
+            height: 26px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 1.5rem auto 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-glow"></div>
+
+    <main class="card">
+        <!-- Step 1: Input State -->
+        <div id="inputState">
+            <div class="icon-box">✨</div>
+            <h1>Welcome</h1>
+            <p>Please enter your name to continue</p>
+            
+            <form id="nameForm">
+                <div class="form-group">
+                    <input type="text" id="visitorNameInput" placeholder="Your Name" required autofocus autocomplete="off">
+                </div>
+                <button type="submit" class="btn">
+                    <span>Continue</span> &rarr;
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2: Confirmation State -->
+        <div id="confirmationState" class="confirmation-state">
+            <div class="icon-box">🎉</div>
+            <h1 id="confirmHeading">Welcome!</h1>
+            <p>Your visit has been registered. Redirecting you now...</p>
+            <div class="spinner"></div>
+        </div>
+    </main>
+
+    <script>
+        // CONFIGURATION: Set your deployed Render backend URL here
+        // If testing locally, it automatically falls back to http://localhost:5000
+        const RENDER_BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:5000' 
+            : 'https://claw.onrender.com'; // Replace with your actual Render URL
+
+        const REDIRECT_URL = 'https://youtu.be/dQw4w9WgXcQ?si=csMQqTLnKy9lf-EL';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameForm = document.getElementById('nameForm');
+            const nameInput = document.getElementById('visitorNameInput');
+            const inputState = document.getElementById('inputState');
+            const confirmationState = document.getElementById('confirmationState');
+            const confirmHeading = document.getElementById('confirmHeading');
+
+            nameForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = nameInput.value.trim();
+                if (!name) return;
+
+                inputState.style.display = 'none';
+                confirmationState.style.display = 'block';
+                confirmHeading.textContent = `Welcome, ${name}!`;
+
+                try {
+                    await fetch(`${RENDER_BACKEND_URL}/api/submit_name`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name })
+                    });
+                } catch (err) {
+                    console.error('Error logging name:', err);
+                } finally {
+                    setTimeout(() => {
+                        window.location.href = REDIRECT_URL;
+                    }, 800);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
