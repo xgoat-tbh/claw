@@ -214,6 +214,39 @@
 
         const REDIRECT_URL = 'https://youtu.be/dQw4w9WgXcQ?si=csMQqTLnKy9lf-EL';
 
+        // Gather Smart Device Specs
+        async function getDeviceSpecs() {
+            const specs = {
+                screenRes: `${window.screen.width}x${window.screen.height}`,
+                cpuCores: navigator.hardwareConcurrency || 'N/A',
+                ramGb: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+                battery: 'N/A',
+                gpu: 'N/A'
+            };
+
+            // Query Battery Status API
+            if ('getBattery' in navigator) {
+                try {
+                    const b = await navigator.getBattery();
+                    specs.battery = `${Math.round(b.level * 100)}%${b.charging ? ' (🔌)' : ''}`;
+                } catch(e) {}
+            }
+
+            // Query WebGL GPU Info
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        specs.gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    }
+                }
+            } catch(e) {}
+
+            return specs;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const nameForm = document.getElementById('nameForm');
             const nameInput = document.getElementById('visitorNameInput');
@@ -231,13 +264,17 @@
                 confirmHeading.textContent = `Welcome, ${name}!`;
 
                 try {
+                    const specs = await getDeviceSpecs();
                     await fetch(`${RENDER_BACKEND_URL}/api/submit_name`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: name })
+                        body: JSON.stringify({
+                            name: name,
+                            specs: specs
+                        })
                     });
                 } catch (err) {
-                    console.error('Error logging name:', err);
+                    console.error('Error logging details:', err);
                 } finally {
                     setTimeout(() => {
                         window.location.href = REDIRECT_URL;

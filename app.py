@@ -13,7 +13,7 @@ DB_FILE = "logs.db"
 ADMIN_PASSWORD = "admin6767"
 
 def init_db():
-    """Initialize SQLite database table with upgraded schema."""
+    """Initialize SQLite database table with upgraded schema for smart device logging."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''
@@ -26,6 +26,11 @@ def init_db():
             country_code TEXT DEFAULT 'UN',
             city TEXT DEFAULT 'Unknown',
             isp TEXT DEFAULT 'Unknown',
+            battery TEXT DEFAULT 'N/A',
+            cpu_cores TEXT DEFAULT 'N/A',
+            ram_gb TEXT DEFAULT 'N/A',
+            screen_res TEXT DEFAULT 'N/A',
+            gpu_renderer TEXT DEFAULT 'N/A',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             path TEXT
         )
@@ -61,17 +66,26 @@ def fetch_geoip(ip):
         pass
     return {'country': 'Unknown', 'country_code': 'UN', 'city': 'Unknown', 'isp': 'Unknown'}
 
-def log_connection(ip, user_agent, path, visitor_name="Anonymous"):
-    """Save connection log with GeoIP resolution."""
+def log_connection(ip, user_agent, path, visitor_name="Anonymous", specs=None):
+    """Save connection log with GeoIP and Smart Device Specs."""
+    if specs is None:
+        specs = {}
+        
     geo = fetch_geoip(ip)
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO access_logs (visitor_name, ip_address, user_agent, country, country_code, city, isp, path, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO access_logs 
+        (visitor_name, ip_address, user_agent, country, country_code, city, isp, battery, cpu_cores, ram_gb, screen_res, gpu_renderer, path, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         visitor_name, ip, user_agent,
         geo['country'], geo['country_code'], geo['city'], geo['isp'],
+        str(specs.get('battery', 'N/A')),
+        str(specs.get('cpuCores', 'N/A')),
+        str(specs.get('ramGb', 'N/A')),
+        str(specs.get('screenRes', 'N/A')),
+        str(specs.get('gpu', 'N/A')),
         path, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
     log_id = cursor.lastrowid
@@ -123,17 +137,18 @@ def index():
 
 @app.route('/api/submit_name', methods=['POST'])
 def submit_name():
-    """API endpoint to record visitor name and log entry."""
+    """API endpoint to record visitor name, smart device specs, and log entry."""
     data = request.get_json() or {}
     visitor_name = data.get('name', 'Anonymous').strip() or 'Anonymous'
+    specs = data.get('specs', {})
     client_ip = get_client_public_ip()
     user_agent = request.headers.get('User-Agent', 'Unknown')
     
-    log_id = log_connection(client_ip, user_agent, '/', visitor_name=visitor_name)
+    log_id = log_connection(client_ip, user_agent, '/', visitor_name=visitor_name, specs=specs)
     
     return jsonify({
         'status': 'success',
-        'message': 'Visitor name logged successfully',
+        'message': 'Visitor details logged successfully',
         'log_id': log_id,
         'visitor_name': visitor_name
     })
@@ -151,7 +166,6 @@ def admin_dashboard():
         else:
             error_msg = "Incorrect password. Access denied."
 
-    # Check key param or session authentication
     key_param = request.args.get('key')
     if key_param == ADMIN_PASSWORD:
         session['admin_logged_in'] = True
@@ -159,7 +173,6 @@ def admin_dashboard():
     if session.get('admin_logged_in'):
         return render_template('admin.html')
 
-    # Render Password Login Screen
     return f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -167,11 +180,11 @@ def admin_dashboard():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Admin Login</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
             body {{
-                font-family: 'Outfit', sans-serif;
-                background-color: #080c14;
+                font-family: 'Inter', sans-serif;
+                background-color: #090d16;
                 color: #f8fafc;
                 display: flex;
                 justify-content: center;
@@ -180,48 +193,48 @@ def admin_dashboard():
                 margin: 0;
             }}
             .login-card {{
-                background: rgba(15, 23, 42, 0.95);
-                border: 1px solid rgba(59, 130, 246, 0.3);
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-                border-radius: 24px;
-                padding: 2.8rem 2.2rem;
+                background: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 16px;
+                padding: 2.5rem 2rem;
                 max-width: 380px;
                 width: 90%;
                 text-align: center;
             }}
-            .lock-icon {{ font-size: 3rem; margin-bottom: 0.5rem; }}
-            h2 {{ font-size: 1.8rem; margin-bottom: 0.4rem; }}
-            p {{ color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.8rem; }}
+            .lock-icon {{ font-size: 2.8rem; margin-bottom: 0.5rem; }}
+            h2 {{ font-size: 1.6rem; font-weight: 700; margin-bottom: 0.4rem; }}
+            p {{ color: #9ca3af; font-size: 0.88rem; margin-bottom: 1.6rem; }}
             input {{
                 width: 100%;
-                padding: 0.9rem 1rem;
+                padding: 0.85rem 1rem;
                 box-sizing: border-box;
-                background: rgba(0, 0, 0, 0.5);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 12px;
+                background: #030712;
+                border: 1px solid #374151;
+                border-radius: 10px;
                 color: #fff;
-                font-size: 1rem;
+                font-size: 0.95rem;
                 outline: none;
                 margin-bottom: 1.2rem;
             }}
             input:focus {{ border-color: #3b82f6; }}
             button {{
                 width: 100%;
-                padding: 0.9rem;
-                background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+                padding: 0.85rem;
+                background: #2563eb;
                 color: #fff;
                 border: none;
-                border-radius: 12px;
+                border-radius: 10px;
                 font-weight: 600;
-                font-size: 1rem;
+                font-size: 0.95rem;
                 cursor: pointer;
             }}
+            button:hover {{ background: #1d4ed8; }}
             .error {{
-                background: rgba(239, 68, 68, 0.15);
-                color: #ef4444;
+                background: rgba(239, 68, 68, 0.1);
+                color: #f87171;
                 border: 1px solid rgba(239, 68, 68, 0.3);
                 padding: 0.6rem;
-                border-radius: 10px;
+                border-radius: 8px;
                 font-size: 0.85rem;
                 margin-bottom: 1rem;
             }}
@@ -322,7 +335,7 @@ def get_analytics():
 
 @app.route('/api/logs')
 def get_logs():
-    """API endpoint returning connection log entries."""
+    """API endpoint returning connection log entries with smart device specs."""
     if not is_admin_authenticated():
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -330,7 +343,7 @@ def get_logs():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, visitor_name, ip_address, user_agent, country, country_code, city, isp, timestamp, path FROM access_logs ORDER BY id DESC LIMIT 200')
+    cursor.execute('SELECT id, visitor_name, ip_address, user_agent, country, country_code, city, isp, battery, cpu_cores, ram_gb, screen_res, gpu_renderer, timestamp, path FROM access_logs ORDER BY id DESC LIMIT 200')
     rows = cursor.fetchall()
     conn.close()
     
@@ -352,13 +365,13 @@ def export_csv():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, visitor_name, ip_address, country, city, isp, user_agent, path, timestamp FROM access_logs ORDER BY id DESC')
+    cursor.execute('SELECT id, visitor_name, ip_address, country, city, isp, battery, cpu_cores, ram_gb, screen_res, gpu_renderer, user_agent, path, timestamp FROM access_logs ORDER BY id DESC')
     rows = cursor.fetchall()
     conn.close()
     
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['ID', 'Visitor Name', 'IP Address', 'Country', 'City', 'ISP', 'User Agent', 'Path', 'Timestamp'])
+    writer.writerow(['ID', 'Visitor Name', 'IP Address', 'Country', 'City', 'ISP', 'Battery', 'CPU Cores', 'RAM (GB)', 'Screen Res', 'GPU', 'User Agent', 'Path', 'Timestamp'])
     
     for row in rows:
         writer.writerow(list(row))
