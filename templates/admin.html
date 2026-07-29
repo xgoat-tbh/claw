@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Suite - Access Logs & Analytics</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #080c14;
+            --card-bg: rgba(15, 23, 42, 0.85);
+            --card-border: rgba(59, 130, 246, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body.light-theme {
+            --bg-dark: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.1);
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent-blue: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            padding: 2rem 1.5rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .background-glow {
+            position: fixed;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, rgba(8, 12, 20, 0) 70%);
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .admin-wrapper {
+            max-width: 1240px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.8rem;
+        }
+
+        /* Header */
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            padding: 1.8rem 2rem;
+            border-radius: 24px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 0.5rem;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.65rem 1.2rem;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: #ffffff;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent-blue);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            padding: 1rem 1.4rem;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease forwards;
+            max-width: 340px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.6rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .kpi-card {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .kpi-icon {
+            font-size: 2.2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.85rem;
+            border-radius: 16px;
+        }
+
+        .kpi-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .kpi-content h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 0.2rem;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.2rem;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 240px;
+            width: 100%;
+        }
+
+        /* Logs Table Card */
+        .table-card {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 1.8rem;
+            border-bottom: 1px solid var(--card-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .table-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .input-search {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            width: 280px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .data-table th {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 1rem 1.3rem;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.9px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .data-table td {
+            padding: 1rem 1.3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        .data-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .monospace {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .badge-ip {
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent-blue);
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+        }
+
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.8rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-top: 1px solid var(--card-border);
+        }
+
+        .pagination-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-glow"></div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <div class="admin-wrapper">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-title">
+                <span class="badge">Analytics Suite Pro</span>
+                <h1>Access Logs & Visitor Analytics</h1>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggleBtn" class="btn btn-secondary">
+                    🌙 Theme
+                </button>
+                <button id="exportCsvBtn" class="btn btn-primary">
+                    📥 Export CSV
+                </button>
+                <button id="refreshBtn" class="btn btn-secondary">
+                    🔄 Refresh
+                </button>
+                <button id="clearLogsBtn" class="btn btn-danger">
+                    🗑️ Clear History
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Metrics Grid -->
+        <section class="kpi-grid">
+            <div class="card kpi-card">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Total Visits</span>
+                    <h3 id="totalVisits">0</h3>
+                </div>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="kpi-icon">🌍</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Unique IP Addresses</span>
+                    <h3 id="uniqueIps">0</h3>
+                </div>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="kpi-icon">⚡</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Today's Visits</span>
+                    <h3 id="todayVisits">0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart Analytics Section -->
+        <section class="charts-grid">
+            <div class="card chart-card">
+                <h2>📈 Hourly Visitor Traffic Trend</h2>
+                <div class="chart-container">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+            <div class="card chart-card">
+                <h2>💻 Browser Breakdown</h2>
+                <div class="chart-container">
+                    <canvas id="browserChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logs Table Section -->
+        <section class="card table-card">
+            <div class="table-header">
+                <h2>Live Visitor Log Entries</h2>
+                <div class="table-search">
+                    <input type="text" id="searchInput" placeholder="Search Name, IP, City, Country..." class="input-search">
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th># ID</th>
+                            <th>Visitor Name</th>
+                            <th>IP Address</th>
+                            <th>Location / ISP</th>
+                            <th>User Agent</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center" style="padding: 2rem; color: var(--text-secondary);">
+                                Loading connection logs...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <span id="paginationInfo" style="font-size: 0.88rem; color: var(--text-secondary);">Showing 1 to 15 entries</span>
+                <div class="pagination-btns">
+                    <button id="prevPageBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">&larr; Prev</button>
+                    <button id="nextPageBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">Next &rarr;</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Script for Analytics & AJAX fetching -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const totalVisitsElem = document.getElementById('totalVisits');
+            const uniqueIpsElem = document.getElementById('uniqueIps');
+            const todayVisitsElem = document.getElementById('todayVisits');
+            const logsTableBody = document.getElementById('logsTableBody');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const clearLogsBtn = document.getElementById('clearLogsBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            const searchInput = document.getElementById('searchInput');
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            const nextPageBtn = document.getElementById('nextPageBtn');
+            const paginationInfo = document.getElementById('paginationInfo');
+            const toastContainer = document.getElementById('toastContainer');
+
+            const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+            const ADMIN_KEY = new URLSearchParams(window.location.search).get('key') || 'admin123';
+
+            let allLogs = [];
+            let filteredLogs = [];
+            let currentPage = 1;
+            const pageSize = 15;
+            let lastLogCount = 0;
+
+            let trafficChart = null;
+            let browserChart = null;
+
+            // Audio Alert Generator using Web Audio API
+            function playChime() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                } catch(e) {}
+            }
+
+            function showToast(title, message) {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = `<div>🔔</div><div><strong>${title}</strong><div style="font-size:0.82rem; opacity:0.8;">${message}</div></div>`;
+                toastContainer.appendChild(toast);
+                setTimeout(() => toast.remove(), 4000);
+            }
+
+            // Fetch Stats
+            async function fetchStats() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/stats?key=${ADMIN_KEY}`);
+                    const data = await res.json();
+                    totalVisitsElem.textContent = data.total_visits || 0;
+                    uniqueIpsElem.textContent = data.unique_ips || 0;
+                    todayVisitsElem.textContent = data.today_visits || 0;
+
+                    // Play chime & toast if new visits arrive
+                    if (lastLogCount > 0 && data.total_visits > lastLogCount) {
+                        playChime();
+                        showToast('New Visitor Connected!', `${data.total_visits - lastLogCount} new connection(s) registered.`);
+                    }
+                    lastLogCount = data.total_visits;
+                } catch (err) {
+                    console.error('Error fetching stats:', err);
+                }
+            }
+
+            // Fetch Charts Data
+            async function fetchAnalytics() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/analytics?key=${ADMIN_KEY}`);
+                    const data = await res.json();
+                    renderCharts(data);
+                } catch (err) {
+                    console.error('Error fetching analytics:', err);
+                }
+            }
+
+            function renderCharts(data) {
+                // Traffic Trend Line Chart
+                const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+                if (trafficChart) trafficChart.destroy();
+                trafficChart = new Chart(ctxTraffic, {
+                    type: 'line',
+                    data: {
+                        labels: data.timeline.labels.length ? data.timeline.labels : ['Now'],
+                        datasets: [{
+                            label: 'Visits',
+                            data: data.timeline.data.length ? data.timeline.data : [1],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+                        }
+                    }
+                });
+
+                // Browser Donut Chart
+                const ctxBrowser = document.getElementById('browserChart').getContext('2d');
+                if (browserChart) browserChart.destroy();
+                browserChart = new Chart(ctxBrowser, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(data.browsers),
+                        datasets: [{
+                            data: Object.values(data.browsers),
+                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } }
+                    }
+                });
+            }
+
+            // Fetch Access Logs
+            async function fetchLogs() {
+                try {
+                    const res = await fetch(`${API_BASE}/api/logs?key=${ADMIN_KEY}`);
+                    allLogs = await res.json();
+                    filterLogs();
+                } catch (err) {
+                    console.error('Error fetching logs:', err);
+                    logsTableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="color: var(--danger); padding: 2rem;">Failed to load connection logs. Run Flask server via python app.py.</td></tr>`;
+                }
+            }
+
+            function filterLogs() {
+                const query = searchInput.value.toLowerCase().trim();
+                filteredLogs = allLogs.filter(log =>
+                    (log.visitor_name && log.visitor_name.toLowerCase().includes(query)) ||
+                    (log.ip_address && log.ip_address.toLowerCase().includes(query)) ||
+                    (log.city && log.city.toLowerCase().includes(query)) ||
+                    (log.country && log.country.toLowerCase().includes(query)) ||
+                    (log.user_agent && log.user_agent.toLowerCase().includes(query))
+                );
+                currentPage = 1;
+                renderPaginatedLogs();
+            }
+
+            function renderPaginatedLogs() {
+                if (!filteredLogs || filteredLogs.length === 0) {
+                    logsTableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem; color: var(--text-secondary);">No connection logs found.</td></tr>`;
+                    paginationInfo.textContent = 'Showing 0 entries';
+                    return;
+                }
+
+                const totalPages = Math.ceil(filteredLogs.length / pageSize);
+                const startIndex = (currentPage - 1) * pageSize;
+                const endIndex = Math.min(startIndex + pageSize, filteredLogs.length);
+                const pageLogs = filteredLogs.slice(startIndex, endIndex);
+
+                paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredLogs.length} entries`;
+
+                logsTableBody.innerHTML = pageLogs.map(log => `
+                    <tr>
+                        <td>#${log.id}</td>
+                        <td><strong>${escapeHtml(log.visitor_name || 'Anonymous')}</strong></td>
+                        <td><span class="badge-ip monospace">${escapeHtml(log.ip_address)}</span></td>
+                        <td>
+                            <span>${log.flag || '🌐'} <strong>${escapeHtml(log.city || 'Unknown')}</strong>, ${escapeHtml(log.country || 'Unknown')}</span>
+                            <div style="font-size:0.75rem; color:var(--text-secondary);">${escapeHtml(log.isp || '')}</div>
+                        </td>
+                        <td><span class="monospace" title="${escapeHtml(log.user_agent)}">${truncateText(log.user_agent, 30)}</span></td>
+                        <td>${escapeHtml(log.timestamp)}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="copyToClipboard('${escapeHtml(log.ip_address)}')">
+                                📋 Copy IP
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage >= totalPages;
+            }
+
+            function truncateText(str, maxLen) {
+                if (!str) return 'Unknown';
+                return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            }
+
+            window.copyToClipboard = function(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('IP Copied', text);
+                });
+            };
+
+            // Event Listeners
+            searchInput.addEventListener('input', filterLogs);
+
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) { currentPage--; renderPaginatedLogs(); }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage * pageSize < filteredLogs.length) { currentPage++; renderPaginatedLogs(); }
+            });
+
+            refreshBtn.addEventListener('click', () => {
+                fetchStats();
+                fetchAnalytics();
+                fetchLogs();
+            });
+
+            exportCsvBtn.addEventListener('click', () => {
+                window.location.href = `${API_BASE}/api/logs/export?key=${ADMIN_KEY}`;
+            });
+
+            themeToggleBtn.addEventListener('click', () => {
+                document.body.classList.toggle('light-theme');
+            });
+
+            clearLogsBtn.addEventListener('click', async () => {
+                if (confirm('Are you sure you want to clear all access logs from the database?')) {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/logs/clear?key=${ADMIN_KEY}`, { method: 'POST' });
+                        const result = await res.json();
+                        alert(result.message);
+                        fetchStats();
+                        fetchAnalytics();
+                        fetchLogs();
+                    } catch (err) {
+                        alert('Failed to clear logs');
+                    }
+                }
+            });
+
+            // Initial load & 5s Auto-refresh
+            fetchStats();
+            fetchAnalytics();
+            fetchLogs();
+            setInterval(() => {
+                fetchStats();
+                fetchAnalytics();
+                fetchLogs();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
