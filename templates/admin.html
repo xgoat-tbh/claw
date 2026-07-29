@@ -381,6 +381,9 @@
                 <button id="clearLogsBtn" class="btn btn-danger">
                     🗑️ Clear History
                 </button>
+                <a href="/admin/logout" class="btn btn-secondary">
+                    🔒 Logout
+                </a>
             </div>
         </header>
 
@@ -487,7 +490,7 @@
             const toastContainer = document.getElementById('toastContainer');
 
             const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
-            const ADMIN_KEY = new URLSearchParams(window.location.search).get('key') || 'admin123';
+            const ADMIN_KEY = new URLSearchParams(window.location.search).get('key') || 'admin6767';
 
             let allLogs = [];
             let filteredLogs = [];

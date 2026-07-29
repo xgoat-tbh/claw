@@ -4,11 +4,13 @@ import urllib.request
 import json
 import csv
 import io
-from flask import Flask, request, render_template, jsonify, Response
+from flask import Flask, request, render_template, jsonify, Response, session, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = "claw_admin_secure_session_key_6767"
+
 DB_FILE = "logs.db"
-ADMIN_KEY = "admin123"
+ADMIN_PASSWORD = "admin6767"
 
 def init_db():
     """Initialize SQLite database table with upgraded schema."""
@@ -99,16 +101,18 @@ init_db()
 
 @app.after_request
 def add_cors_headers(response):
-    """Enable CORS so local file:// pages can fetch API endpoints."""
+    """Enable CORS so local file:// and Vercel pages can fetch API endpoints."""
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Admin-Key'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     return response
 
-def check_admin_auth():
-    """Verify admin key authentication."""
+def is_admin_authenticated():
+    """Verify session or secret key authentication."""
+    if session.get('admin_logged_in') == True:
+        return True
     provided_key = request.args.get('key') or request.headers.get('X-Admin-Key')
-    return provided_key == ADMIN_KEY
+    return provided_key == ADMIN_PASSWORD
 
 @app.route('/')
 def index():
@@ -134,28 +138,122 @@ def submit_name():
         'visitor_name': visitor_name
     })
 
-@app.route('/admin')
+@app.route('/admin', methods=['GET', 'POST'])
 def admin_dashboard():
-    """Admin Dashboard UI route with key authentication."""
-    if not check_admin_auth():
-        return """
-        <body style="font-family: sans-serif; background: #080c14; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh;">
-            <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #ef4444; padding: 2.5rem; border-radius: 20px; text-align: center; max-width: 400px;">
-                <h2 style="color: #ef4444; margin-bottom: 0.5rem;">🔒 Access Denied</h2>
-                <p style="color: #94a3b8; margin-bottom: 1.5rem;">Admin authentication key required.</p>
-                <form action="/admin" method="GET">
-                    <input type="password" name="key" placeholder="Enter Secret Admin Key" style="width: 100%; padding: 0.8rem; border-radius: 10px; border: 1px solid #3b82f6; background: #000; color: #fff; margin-bottom: 1rem;">
-                    <button type="submit" style="width: 100%; padding: 0.8rem; background: #3b82f6; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">Login to Dashboard</button>
-                </form>
-            </div>
-        </body>
-        """, 403
+    """Admin Dashboard UI route with password protection (admin6767)."""
+    error_msg = None
 
-    return render_template('admin.html')
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            error_msg = "Incorrect password. Access denied."
+
+    # Check key param or session authentication
+    key_param = request.args.get('key')
+    if key_param == ADMIN_PASSWORD:
+        session['admin_logged_in'] = True
+
+    if session.get('admin_logged_in'):
+        return render_template('admin.html')
+
+    # Render Password Login Screen
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Login</title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {{
+                font-family: 'Outfit', sans-serif;
+                background-color: #080c14;
+                color: #f8fafc;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }}
+            .login-card {{
+                background: rgba(15, 23, 42, 0.95);
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+                border-radius: 24px;
+                padding: 2.8rem 2.2rem;
+                max-width: 380px;
+                width: 90%;
+                text-align: center;
+            }}
+            .lock-icon {{ font-size: 3rem; margin-bottom: 0.5rem; }}
+            h2 {{ font-size: 1.8rem; margin-bottom: 0.4rem; }}
+            p {{ color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.8rem; }}
+            input {{
+                width: 100%;
+                padding: 0.9rem 1rem;
+                box-sizing: border-box;
+                background: rgba(0, 0, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 12px;
+                color: #fff;
+                font-size: 1rem;
+                outline: none;
+                margin-bottom: 1.2rem;
+            }}
+            input:focus {{ border-color: #3b82f6; }}
+            button {{
+                width: 100%;
+                padding: 0.9rem;
+                background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+                color: #fff;
+                border: none;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 1rem;
+                cursor: pointer;
+            }}
+            .error {{
+                background: rgba(239, 68, 68, 0.15);
+                color: #ef4444;
+                border: 1px solid rgba(239, 68, 68, 0.3);
+                padding: 0.6rem;
+                border-radius: 10px;
+                font-size: 0.85rem;
+                margin-bottom: 1rem;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="login-card">
+            <div class="lock-icon">🔒</div>
+            <h2>Admin Portal</h2>
+            <p>Enter secret password to access analytics</p>
+            {f'<div class="error">{error_msg}</div>' if error_msg else ''}
+            <form action="/admin" method="POST">
+                <input type="password" name="password" placeholder="Admin Password..." required autofocus>
+                <button type="submit">Unlock Dashboard &rarr;</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """, 401
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Logout of Admin session."""
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/api/stats')
 def get_stats():
     """API endpoint returning analytics metrics."""
+    if not is_admin_authenticated():
+        return jsonify({'error': 'Unauthorized'}), 401
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
@@ -179,10 +277,12 @@ def get_stats():
 @app.route('/api/analytics')
 def get_analytics():
     """API endpoint returning Chart.js analytics data."""
+    if not is_admin_authenticated():
+        return jsonify({'error': 'Unauthorized'}), 401
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Device / Browser Breakdown
     cursor.execute('SELECT user_agent FROM access_logs')
     agents = [row[0] or '' for row in cursor.fetchall()]
     
@@ -199,7 +299,6 @@ def get_analytics():
         else:
             browser_counts['Other'] += 1
 
-    # Hourly Visits (Last 7 Days)
     cursor.execute('''
         SELECT strftime('%Y-%m-%d %H:00', timestamp) as hr, COUNT(*) 
         FROM access_logs 
@@ -223,7 +322,10 @@ def get_analytics():
 
 @app.route('/api/logs')
 def get_logs():
-    """API endpoint returning connection log entries with GeoIP and Flag emojis."""
+    """API endpoint returning connection log entries."""
+    if not is_admin_authenticated():
+        return jsonify({'error': 'Unauthorized'}), 401
+
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -243,6 +345,9 @@ def get_logs():
 @app.route('/api/logs/export')
 def export_csv():
     """Export all access logs as a downloadable CSV file."""
+    if not is_admin_authenticated():
+        return jsonify({'error': 'Unauthorized'}), 401
+
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -268,6 +373,9 @@ def export_csv():
 @app.route('/api/logs/clear', methods=['POST'])
 def clear_logs():
     """API endpoint to wipe log history."""
+    if not is_admin_authenticated():
+        return jsonify({'error': 'Unauthorized'}), 401
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM access_logs')
@@ -277,5 +385,5 @@ def clear_logs():
 
 if __name__ == '__main__':
     print("🚀 Starting Flask Web App & Admin Server on http://localhost:5000")
-    print("📊 Admin Dashboard (Key Auth): http://localhost:5000/admin?key=admin123")
+    print("🔒 Admin Password: admin6767")
     app.run(host='0.0.0.0', port=5000, debug=True)
